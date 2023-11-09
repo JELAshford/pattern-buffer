@@ -17,33 +17,33 @@ Originally designed to count patterns in DNA sequences with ambiguous bases as d
 To demonstrate, we'll first create some sample sequences and queries. As we're using IUPAC nucleotide sequences, we can use the provided `generate_iupac_embedding` function to provide the embedding tensor. 
 
 ```python
->>> from pattern_buffer import generate_iupac_embedding
->>> sequences = ["AACGAATCAAAAT", "AACAGTTCAAAAT", "AACAGTTCGYGGA", "AACAAGATCAGGA"]
->>> queries = ["AAA", "AGT", "AAACA", "AAR", "GYGGA"]
->>> embedding = generate_iupac_embedding()
+from pattern_buffer import generate_iupac_embedding
+sequences = ["AACGAATCAAAAT", "AACAGTTCAAAAT", "AACAGTTCGYGGA", "AACAAGATCAGGA"]
+queries = ["AAA", "AGT", "AAACA", "AAR", "GYGGA"]
+embedding = generate_iupac_embedding()
 ```
 
 From here, we can use the function `count_queries` to count the queries in a single function
 call: 
 ```python
->>> from pattern_buffer import count_queries
->>> count_queries(sequences, queries, embedding)
-tensor([[2, 0, 0, 2, 0],
-        [2, 1, 0, 2, 0],
-        [0, 1, 0, 0, 0],
-        [0, 0, 0, 1, 0]])
+from pattern_buffer import count_queries
+count_queries(sequences, queries, embedding)
+# tensor([[2, 0, 0, 2, 0],
+#         [2, 1, 0, 2, 0],
+#         [0, 1, 0, 0, 0],
+#         [0, 0, 0, 1, 0]])
 ```
 
 or create an instance of the `PatternBuffer` class, and use the `.count` method to count occurrences in new sequences. This has the advantage of not re-calculating the query embeddings or the `support` tensor each time, so is well suited for fast repeated counting:
 
 ```python
->>> from pattern_buffer import PatternBuffer
->>> pb = PatternBuffer(query_strings=queries, embedding=embedding)
->>> pb.count(sequences)
-tensor([[2, 0, 0, 2, 0],
-        [2, 1, 0, 2, 0],
-        [0, 1, 0, 0, 0],
-        [0, 0, 0, 1, 0]])
+from pattern_buffer import PatternBuffer
+pb = PatternBuffer(query_strings=queries, embedding=embedding)
+pb.count(sequences)
+# tensor([[2, 0, 0, 2, 0],
+#         [2, 1, 0, 2, 0],
+#         [0, 1, 0, 0, 0],
+#         [0, 0, 0, 1, 0]])
 ```
 
 ## Limitations
