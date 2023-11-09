@@ -1,0 +1,17 @@
+[project]
+name = "pattern_buffer"
+version = "0.0.1"
+authors = [
+  { name="James Ashford", email="ashfordj@rocketmail.com" },
+]
+description = "Fast pattern counting on small-alphabet sequences with GPU acceleration"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/JELAshford/pattern-buffer"
