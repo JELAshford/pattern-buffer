@@ -18,8 +18,6 @@ To demonstrate, we'll first create some sample sequences and queries. As we're u
 
 ```python
 >>> from pattern_buffer import generate_iupac_embedding
-
-# Create sample sequences and queries
 >>> sequences = ["AACGAATCAAAAT", "AACAGTTCAAAAT", "AACAGTTCGYGGA", "AACAAGATCAGGA"]
 >>> queries = ["AAA", "AGT", "AAACA", "AAR", "GYGGA"]
 >>> embedding = generate_iupac_embedding()
