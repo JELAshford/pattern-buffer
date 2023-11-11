@@ -1,6 +1,6 @@
-# Pattern Buffer
+# Pattern Buffer 🧮
 
-Fast pattern counting on small-alphabet sequences with GPU acceleration, built on PyTorch's `Tensor`.
+Fast pattern counting on small-alphabet sequences with GPU acceleration, built on PyTorch.
 
 Originally designed to count patterns in DNA sequences with ambiguous bases as defined by the [IUPAC code](https://www.bioinformatics.org/sms/iupac.html), but can be extended to any pattern counting task where the original sequences and target patterns can be converted into a sensible categorical encoding. 
 
@@ -12,7 +12,7 @@ Originally designed to count patterns in DNA sequences with ambiguous bases as d
 > [!IMPORTANT]
 > While the query sequences can all be different lengths, currently `Pattern Buffer` only supports counting these patterns on sequences that are all the same length. 
 
-`Pattern Buffer` can be used with a broadly `functional` or `object-oriented (OO)` interface, with the `functional` interface geared towards one-time use and the `OO` interface for use multiple times (i.e. file parsing or PyTorch DataLoaders).
+`Pattern Buffer` can be used with a broadly functional or object-oriented (OO) interface, with the functional interface geared towards one-time use and the OO interface for use multiple times (i.e. file parsing or PyTorch DataLoaders).
 
 To demonstrate, we'll first create some sample sequences and queries. As we're using IUPAC nucleotide sequences, we can use the provided `generate_iupac_embedding` function to provide the embedding tensor. 
 
