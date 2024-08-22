@@ -1,4 +1,5 @@
 """Use convolutions over a sequence to efficiently count query sub-sequences"""
+
 from torch.nn.functional import conv1d, pad
 from einops import rearrange, repeat
 from typing import List
@@ -9,16 +10,16 @@ class PatternBuffer:
     def __init__(
         self,
         query_strings: List[str],
-        embedding: torch.TensorType,
-        device: torch.DeviceObjType = torch.device("cpu"),
+        embedding: torch.Tensor,
+        device: torch.device = torch.device("cpu"),
     ):
         """Efficiently count the presence of `query_strings` in unseen strings
         after `embedding`.
 
         Args:
             query_strings (List[str]): List of query strings to count occurances of
-            embedding (torch.TensorType): Tensor describing mapping between character ordinals and tensors
-            device (torch.DeviceObjType, optional): Device to perform calculations on. Defaults to torch.device("cpu").
+            embedding (torch.Tensor): Tensor describing mapping between character ordinals and tensors
+            device (torch.device, optional): Device to perform calculations on. Defaults to torch.device("cpu").
         """
         self.device = device
         self.query_strings = query_strings
@@ -32,10 +33,11 @@ class PatternBuffer:
             string_list (List[str]): List of strings to be embedded
 
         Returns:
-            torch.TensorType: Tensor of categorical embeddings for each string
+            torch.Tensor: Tensor of categorical embeddings for each string
         """
-        process_seq = lambda seq: torch.stack([self.embedding[ord(s)] for s in seq])
-        seq_tensors = torch.stack([process_seq(seq) for seq in string_list])
+        seq_tensors = torch.stack(
+            [torch.stack([self.embedding[ord(s)] for s in seq]) for seq in string_list]
+        )
         return rearrange(seq_tensors, "batch length channel -> batch channel length")
 
     def process_queries(self):
@@ -44,7 +46,7 @@ class PatternBuffer:
         """
         # Process the query strings, and extract lengths for padding/support
         query_lengths = torch.Tensor([len(s) for s in self.query_strings]).int()
-        self.longest_query = max(query_lengths).item()
+        self.longest_query = int(query_lengths.max().item())
         self.kernel_length = self.longest_query + (self.longest_query & 1)
         padded_subseq = [s.ljust(self.kernel_length, "N") for s in self.query_strings]
         self.embedded_queries = self.embed_strings(padded_subseq).to(self.device)
@@ -102,19 +104,20 @@ def generate_iupac_embedding():
     return embed
 
 
-def embed_strings(string_list: List[str], embedding: torch.TensorType):
+def embed_strings(string_list: List[str], embedding: torch.Tensor):
     """Embed all strings in a list into a categorical embedding using the given
     embedding tenosr
 
     Args:
         string_list (List[str]): List of strings to be embedded
-        embedding (torch.TensorType): Tensor describing mapping between character ordinals and tensors
+        embedding (torch.Tensor): Tensor describing mapping between character ordinals and tensors
 
     Returns:
         torch.TensorType: Tensor of categorical embeddings for each string
     """
-    process_seq = lambda seq: torch.stack([embedding[ord(s)] for s in seq])
-    seq_tensors = torch.stack([process_seq(seq) for seq in string_list])
+    seq_tensors = torch.stack(
+        [torch.stack([embedding[ord(s)] for s in seq]) for seq in string_list]
+    )
     return rearrange(seq_tensors, "batch length channel -> batch channel length")
 
 
@@ -122,8 +125,8 @@ def embed_strings(string_list: List[str], embedding: torch.TensorType):
 def count_queries(
     seqs: List[str],
     queries: List[str],
-    embedding: torch.TensorType,
-    device: torch.DeviceObjType = torch.device("cpu"),
+    embedding: torch.Tensor,
+    device: torch.device = torch.device("cpu"),
 ):
     """Count number of occurance of each query in the seqs after each has been
     embedded. Can be done on the GPU for signficiant speedups.
@@ -131,15 +134,15 @@ def count_queries(
     Args:
         seqs (List[str]): List of strings to be embedded and have counts taken
         queries (List[str]): List of query strings to count occurances of
-        embedding (torch.TensorType): Tensor describing mapping between character ordinals and tensors
+        embedding (torch.Tensor): Tensor describing mapping between character ordinals and tensors
         device (torch.DeviceObjType, optional): Device to perform calculations on. Defaults to torch.device("cpu").
 
     Returns:
-        torch.TensorType: Tensor of counts, arranged (seq x query)
+        torch.Tensor: Tensor of counts, arranged (seq x query)
     """
     # Process the query strings, and extract lengths for padding/support
     query_lengths = torch.Tensor([len(s) for s in queries]).int()
-    longest_query = max(query_lengths).item()
+    longest_query = int(query_lengths.max().item())
     kernel_length = longest_query + (longest_query & 1)
     padded_subseq = [s.ljust(kernel_length, "N") for s in queries]
     embedded_queries = embed_strings(padded_subseq, embedding).to(device)
