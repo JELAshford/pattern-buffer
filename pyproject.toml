@@ -1,6 +1,6 @@
 [project]
 name = "pattern_buffer"
-version = "0.0.3"
+version = "0.0.4"
 authors = [{ name = "James Ashford", email = "ashfordj@rocketmail.com" }]
 description = "Fast pattern counting on small-alphabet sequences with GPU acceleration"
 readme = "README.md"
