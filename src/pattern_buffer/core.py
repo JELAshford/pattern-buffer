@@ -69,6 +69,8 @@ class PatternBuffer:
             torch.TensorType: Tensor of counts, arranged (seq x query)
         """
         # Embed input sequences and pad to allow full-length counting
+        longest_seq = int(max([len(s) for s in input_strings]))
+        input_strings = [s.ljust(longest_seq, "Z") for s in input_strings]
         embedded_seqs = self.embed_strings(input_strings).to(self.device)
         padded_seqs = pad(embedded_seqs, (0, self.longest_query), "constant", 0.0)
 
@@ -101,6 +103,7 @@ def generate_iupac_embedding():
     embed[ord("H")] = torch.Tensor([1.0, 1.0, 0.0, 1.0])
     embed[ord("V")] = torch.Tensor([1.0, 1.0, 1.0, 0.0])
     embed[ord("N")] = torch.Tensor([1.0, 1.0, 1.0, 1.0])
+    embed[ord("Z")] = torch.Tensor([0.0, 0.0, 0.0, 0.0])
     return embed
 
 
@@ -154,6 +157,8 @@ def count_queries(
     support[support_base > (kernel_length - expanded_lengths)] = 0.0
 
     # Embed target sequences and pad to allow full-length counting
+    longest_seq = int(max([len(s) for s in seqs]))
+    seqs = [s.ljust(longest_seq, "Z") for s in seqs]
     embedded_seqs = embed_strings(seqs, embedding)
     padded_seqs = pad(embedded_seqs, (0, longest_query), "constant", 0.0).to(device)
 
@@ -165,7 +170,13 @@ def count_queries(
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    sequences = ["AACGAATCAAAAT", "AACAGTTCAAAAT", "AACAGTTCGYGGA", "AACAAGATCAGGA"]
+    # sequences = ["AACGAATCAAAAT", "AACAGTTCAAAAA", "AACAGTTCGYGGA", "AACAAGATCAGGA"]
+    sequences = [
+        "AACGAATCAAAAT",
+        "AACAGTTCAAAAATTAGT",
+        "AGTTCGYGGA",
+        "AACAAGATCAGGAAAGCTGACTTGATG",
+    ]
     query_seqs = ["AAA", "AGT", "AAACA", "AAR", "GYGGA"]
     embedding = generate_iupac_embedding()
 
