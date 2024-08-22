@@ -9,17 +9,19 @@ Originally designed to count patterns in DNA sequences with ambiguous bases as d
 
 ## Usage
 
-> [!IMPORTANT]
-> While the query sequences can all be different lengths, currently `Pattern Buffer` only supports counting these patterns on sequences that are all the same length.
-
 `Pattern Buffer` can be used with a broadly functional or object-oriented (OO) interface, with the functional interface geared towards one-time use and the OO interface for use multiple times (i.e. file parsing or PyTorch DataLoaders).
 
 To demonstrate, we'll first create some sample sequences and queries. As we're using IUPAC nucleotide sequences, we can use the provided `generate_iupac_embedding` function to provide the embedding tensor.
 
 ```python
 from pattern_buffer import generate_iupac_embedding
-sequences = ["AACGAATCAAAAT", "AACAGTTCAAAAT", "AACAGTTCGYGGA", "AACAAGATCAGGA"]
-queries = ["AAA", "AGT", "AAACA", "AAR", "GYGGA"]
+sequences = [
+    "AACGAATCAAAAT",
+    "AACAGTTCAAAAATTAGT",
+    "AGTTCGYGGA",
+    "AACAAGATCAGGAAAGCTGACTTGATG",
+]
+query_seqs = ["AAA", "AGT", "AAACA", "AAR", "GYGGA"]
 embedding = generate_iupac_embedding()
 ```
 
@@ -29,10 +31,10 @@ call:
 ```python
 from pattern_buffer import count_queries
 count_queries(sequences, queries, embedding)
-# tensor([[2, 0, 0, 2, 0],
-#         [2, 1, 0, 2, 0],
-#         [0, 1, 0, 0, 0],
-#         [0, 0, 0, 1, 0]])
+# tensor([[0, 0, 0, 0, 0],
+#         [3, 1, 0, 3, 0],
+#         [0, 1, 0, 0, 1],
+#         [1, 0, 0, 3, 0]])
 ```
 
 or create an instance of the `PatternBuffer` class, and use the `.count` method to count occurrences in new sequences. This has the advantage of not re-calculating the query embeddings or the `support` tensor each time, so is well suited for fast repeated counting:
@@ -41,20 +43,19 @@ or create an instance of the `PatternBuffer` class, and use the `.count` method 
 from pattern_buffer import PatternBuffer
 pb = PatternBuffer(query_strings=queries, embedding=embedding)
 pb.count(sequences)
-# tensor([[2, 0, 0, 2, 0],
-#         [2, 1, 0, 2, 0],
-#         [0, 1, 0, 0, 0],
-#         [0, 0, 0, 1, 0]])
+# tensor([[0, 0, 0, 0, 0],
+#         [3, 1, 0, 3, 0],
+#         [0, 1, 0, 0, 1],
+#         [1, 0, 0, 3, 0]])
 ```
 
 ## Limitations
 
-- Currently, the program expects all input sequences to have the same length, but queries can already be different lengths.
 - If all of your patterns contain unique (non-ambiguous) characters then this encoding scheme is likely overkill and other software would be more efficient.
 - The software is designed for use with GPU acceleration, and will likely under-perform on CPU when compared to CPU-optimised counting schemes.
 
 ## Future work
 
-- [ ] Allow dynamic input lengths with padding
+- [x] Allow dynamic input lengths with padding
 - [ ] Automatic encoding detection from pattern analysis
 - [ ] FFT-based convolutions for long patterns
