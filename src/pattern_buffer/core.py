@@ -26,20 +26,6 @@ class PatternBuffer:
         self.embedding = embedding.to(self.device)
         self.process_queries()
 
-    def embed_strings(self, string_list: List[str]):
-        """Embed all strings in `string_list` using the class' embedding tensor.
-
-        Args:
-            string_list (List[str]): List of strings to be embedded
-
-        Returns:
-            torch.Tensor: Tensor of categorical embeddings for each string
-        """
-        seq_tensors = torch.stack(
-            [torch.stack([self.embedding[ord(s)] for s in seq]) for seq in string_list]
-        )
-        return rearrange(seq_tensors, "batch length channel -> batch channel length")
-
     def process_queries(self):
         """Embed `query_strings` with provided `embedding` and prepare `support` tensor
         for correcting counts from novel sequences.
@@ -48,30 +34,30 @@ class PatternBuffer:
         query_lengths = torch.Tensor([len(s) for s in self.query_strings]).int()
         self.longest_query = int(query_lengths.max().item())
         self.kernel_length = self.longest_query + (self.longest_query & 1)
-        padded_subseq = [s.ljust(self.kernel_length, "N") for s in self.query_strings]
-        self.embedded_queries = self.embed_strings(padded_subseq).to(self.device)
+        self.embedded_queries = embed_strings(
+            self.query_strings, self.embedding, pad_str="N", pad_even=True
+        ).to(self.device)
 
         # Generate support matrix to correct count errors caused by padding
         support_base = repeat(
             torch.arange(self.kernel_length), "l -> k l", k=len(self.query_strings)
-        )
+        ).to(self.device)
         expanded_lengths = repeat(query_lengths, "k -> k l", l=support_base.shape[-1])
         self.support = support_base.clone().to(self.device)
         self.support[support_base > (self.kernel_length - expanded_lengths)] = 0.0
 
-    def count(self, input_strings: List[str]):
-        """Count occurances of provided `query_strings` in new `input_strings`
+    def count(self, string_list: List[str]):
+        """Count occurances of provided `query_strings` in new `string_list`
 
         Args:
-            input_strings (List[str]): List of strings to be embedded and have counts taken
+            string_list (List[str]): List of strings to be embedded and have counts taken
 
         Returns:
             torch.TensorType: Tensor of counts, arranged (seq x query)
         """
         # Embed input sequences and pad to allow full-length counting
-        longest_seq = int(max([len(s) for s in input_strings]))
-        input_strings = [s.ljust(longest_seq, "Z") for s in input_strings]
-        embedded_seqs = self.embed_strings(input_strings).to(self.device)
+        embedded_seqs = embed_strings(string_list, self.embedding, pad_str="Z")
+        embedded_seqs = embedded_seqs.to(self.device)
         padded_seqs = pad(embedded_seqs, (0, self.longest_query), "constant", 0.0)
 
         # Count subsequence occurance with corrected 1d convolution
@@ -107,17 +93,31 @@ def generate_iupac_embedding():
     return embed
 
 
-def embed_strings(string_list: List[str], embedding: torch.Tensor):
+def embed_strings(
+    string_list: List[str],
+    embedding: torch.Tensor,
+    pad_str: str = None,
+    pad_even: bool = False,
+):
     """Embed all strings in a list into a categorical embedding using the given
     embedding tenosr
 
     Args:
         string_list (List[str]): List of strings to be embedded
         embedding (torch.Tensor): Tensor describing mapping between character ordinals and tensors
+        pad_str (str): If provided, will pad all strings to same length using this character
+        pad_even (bool): Should the padding length be rounded up to nearest even numbers?
 
     Returns:
         torch.TensorType: Tensor of categorical embeddings for each string
     """
+    # Apply padding if requested
+    if pad_str is not None:
+        max_length = int(max([len(s) for s in string_list]))
+        if pad_even:
+            max_length += max_length & 1
+        string_list = [s.ljust(max_length, pad_str) for s in string_list]
+    # Embed each of the strings
     seq_tensors = torch.stack(
         [torch.stack([embedding[ord(s)] for s in seq]) for seq in string_list]
     )
@@ -147,8 +147,8 @@ def count_queries(
     query_lengths = torch.Tensor([len(s) for s in queries]).int()
     longest_query = int(query_lengths.max().item())
     kernel_length = longest_query + (longest_query & 1)
-    padded_subseq = [s.ljust(kernel_length, "N") for s in queries]
-    embedded_queries = embed_strings(padded_subseq, embedding).to(device)
+    embedded_queries = embed_strings(queries, embedding, pad_str="N", pad_even=True)
+    embedded_queries = embedded_queries.to(device)
 
     # Generate support matrix to correct count errors caused by padding
     support_base = repeat(torch.arange(kernel_length), "l -> k l", k=len(queries))
@@ -157,9 +157,7 @@ def count_queries(
     support[support_base > (kernel_length - expanded_lengths)] = 0.0
 
     # Embed target sequences and pad to allow full-length counting
-    longest_seq = int(max([len(s) for s in seqs]))
-    seqs = [s.ljust(longest_seq, "Z") for s in seqs]
-    embedded_seqs = embed_strings(seqs, embedding)
+    embedded_seqs = embed_strings(seqs, embedding, pad_str="Z")
     padded_seqs = pad(embedded_seqs, (0, longest_query), "constant", 0.0).to(device)
 
     # Count subsequence occurance with corrected 1d convolution
@@ -170,7 +168,6 @@ def count_queries(
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # sequences = ["AACGAATCAAAAT", "AACAGTTCAAAAA", "AACAGTTCGYGGA", "AACAAGATCAGGA"]
     sequences = [
         "AACGAATCAAAAT",
         "AACAGTTCAAAAATTAGT",
