@@ -1,2 +1,4 @@
 dist
 src/pattern_buffer.egg-info
+.venv
+.DS_Store
